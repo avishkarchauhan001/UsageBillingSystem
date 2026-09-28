@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<IPDRDoc xmlns="http://www.ipdr.org/namespaces/ipdr"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="DOCSIS-3.1-B.0.xsd"
+         docId="B660C64B-052B-4A4D-9D4B-533F68419D53"
+         creationTime="2026-09-28T23:23:49.2163354"
+         IPDRRecorderInfo="standalone-simulator-v1"
+         version="3.1">
+    <IPDR xsi:type="DOCSIS-Type">
+        <IPDRcreationTime>2026-09-28T23:23:49.2163354</IPDRcreationTime>
+        <CMTSHostName>edge.broadband.io</CMTSHostName>
+        <CMTSipAddress>172.28.65.8</CMTSipAddress>
+        <CMTSsysUpTime>61878200</CMTSsysUpTime>
+        <CMTScatvIfName>Cable5/0</CMTScatvIfName>
+        <CMTScatvIfIndex>9</CMTScatvIfIndex>
+        <CMTSupIfName>Ca5/0-upstream3</CMTSupIfName>
+        <CMTSupIfType>129</CMTSupIfType>
+        <CMTSdownIfName>Ca5/0-downstream</CMTSdownIfName>
+        <CMmacAddress>00:02:8A:69:DD:54</CMmacAddress>
+        <CMipAddress>192.168.1.103</CMipAddress>
+        <CMdocsisMode>10</CMdocsisMode>
+        <CMCPEipAddress></CMCPEipAddress>
+        <RecType>1</RecType>
+        <serviceIdentifier>customer1</serviceIdentifier>
+        <serviceClassName>BroadbandStandard</serviceClassName>
+        <serviceDirection>1</serviceDirection>
+        <serviceOctetsPassed>242221056</serviceOctetsPassed>
+        <servicePktsPassed>165904</servicePktsPassed>
+        <serviceSlaDropPkts>0</serviceSlaDropPkts>
+        <serviceSlaDelayPkts>874</serviceSlaDelayPkts>
+        <serviceTimeCreated>1850600</serviceTimeCreated>
+        <serviceTimeActive>600274</serviceTimeActive>
+    </IPDR>
+</IPDRDoc>

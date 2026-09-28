@@ -124,3 +124,19 @@ CREATE TABLE IF NOT EXISTS ipdr_records (
     INDEX idx_ipdr_user (user_id),
     INDEX idx_ipdr_session (session_start, session_end)
 ) ENGINE=InnoDB;
+
+-- 7. RECOGNIZED DEVICES TABLE
+-- Authorized network devices (gateways, CMTS, edge routers) permitted to send IPDRs.
+CREATE TABLE IF NOT EXISTS recognized_devices (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    device_name VARCHAR(100) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    mac_address VARCHAR(20) NOT NULL,
+    hostname VARCHAR(100) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- 'ACTIVE', 'INACTIVE'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_dev_ip (ip_address),
+    INDEX idx_dev_mac (mac_address),
+    INDEX idx_dev_host (hostname),
+    INDEX idx_dev_status (status)
+) ENGINE=InnoDB;

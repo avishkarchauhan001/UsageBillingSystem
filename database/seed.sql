@@ -75,3 +75,13 @@ VALUES
 ON DUPLICATE KEY UPDATE 
     input_octets = VALUES(input_octets),
     output_octets = VALUES(output_octets);
+
+-- 7. RECOGNIZED DEVICES SEED DATA
+INSERT INTO recognized_devices (id, device_name, ip_address, mac_address, hostname, status, created_at)
+VALUES
+(1, 'ISP Gateway 01', '192.168.1.1', '00:1A:2B:3C:4D:5E', 'isp-gw01.net', 'ACTIVE', NOW()),
+(2, 'ISP Gateway 02', '192.168.1.2', '00:1A:2B:3C:4D:5F', 'isp-gw02.net', 'ACTIVE', NOW()),
+(3, 'Broadband Edge Node', '172.28.65.8', '00:02:8A:69:DD:54', 'edge.broadband.io', 'ACTIVE', NOW()),
+(4, 'FastNet Streaming CDN', '10.0.0.1', '00:25:96:FF:FE:12', 'cdn.fastnet.org', 'ACTIVE', NOW()),
+(5, 'Streaming Media Gateway', '192.168.1.5', '00:1A:2B:3C:4D:60', 'stream.service.com', 'ACTIVE', NOW())
+ON DUPLICATE KEY UPDATE status = VALUES(status);
