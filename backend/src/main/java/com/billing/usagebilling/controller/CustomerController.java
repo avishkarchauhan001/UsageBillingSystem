@@ -87,8 +87,8 @@ public class CustomerController {
             @PathVariable Long billId,
             @RequestParam String username,
             @RequestBody(required = false) com.billing.usagebilling.dto.PaymentRequest request) {
-        String paymentMode = (request != null && request.getPaymentMode() != null) 
-                ? request.getPaymentMode() 
+        String paymentMode = (request != null && request.getPaymentMode() != null)
+                ? request.getPaymentMode()
                 : "Online";
         return ResponseEntity.ok(customerService.payBill(username, billId, paymentMode));
     }
@@ -125,12 +125,14 @@ public class CustomerController {
             if (fromDate != null && !fromDate.isBlank()) {
                 from = LocalDate.parse(fromDate.trim());
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         try {
             if (toDate != null && !toDate.isBlank()) {
                 to = LocalDate.parse(toDate.trim());
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return ResponseEntity.ok(customerService.getUserReport(username, from, to));
     }
 

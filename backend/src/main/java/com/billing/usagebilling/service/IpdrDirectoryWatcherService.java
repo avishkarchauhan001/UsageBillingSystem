@@ -10,17 +10,17 @@ import org.springframework.stereotype.Service;
 import com.billing.usagebilling.dto.IpdrXmlIngestionResult;
 
 @Service
-@ConditionalOnProperty(name = "ipdr.auto-ingest.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "ipdr.auto-ingest.enabled", havingValue = "true", matchIfMissing = false)
 public class IpdrDirectoryWatcherService {
 
     private static final Logger log = LoggerFactory.getLogger(IpdrDirectoryWatcherService.class);
 
     private final MediationAndRatingService ratingService;
 
-    @Value("${ipdr.input.directory:c:/NetworkCapstoneProject/simulator/output/ipdr}")
+    @Value("${ipdr.input.directory:#{systemProperties['java.io.tmpdir'] + '/ipdr_in'}}")
     private String inputDirectory;
 
-    @Value("${ipdr.archive.directory:c:/NetworkCapstoneProject/simulator/output/ipdr_archive}")
+    @Value("${ipdr.archive.directory:#{systemProperties['java.io.tmpdir'] + '/ipdr_archive'}}")
     private String archiveDirectory;
 
     public IpdrDirectoryWatcherService(MediationAndRatingService ratingService) {
@@ -33,6 +33,9 @@ public class IpdrDirectoryWatcherService {
     @Scheduled(fixedDelayString = "${ipdr.poll.interval.ms:5000}", initialDelay = 5000)
     public void scanAndIngestXmlFiles() {
         try {
+            if (inputDirectory == null || !new java.io.File(inputDirectory).exists()) {
+                return;
+            }
             IpdrXmlIngestionResult result = ratingService.ingestXmlFilesFromDirectory(inputDirectory, archiveDirectory);
             if (result.getTotalFilesProcessed() > 0) {
                 log.info("[IPDR Directory Watcher] Ingested {} XML files ({} records accepted, {} records rejected).",

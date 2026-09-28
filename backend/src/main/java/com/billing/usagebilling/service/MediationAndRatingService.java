@@ -59,10 +59,10 @@ public class MediationAndRatingService {
     private final BillRepository billRepository;
     private final RecognizedDeviceRepository deviceRepository;
 
-    @Value("${ipdr.input.directory:c:/NetworkCapstoneProject/simulator/output/ipdr}")
+    @Value("${ipdr.input.directory:#{systemProperties['java.io.tmpdir'] + '/ipdr_in'}}")
     private String inputDirectoryPath;
 
-    @Value("${ipdr.archive.directory:c:/NetworkCapstoneProject/simulator/output/ipdr_archive}")
+    @Value("${ipdr.archive.directory:#{systemProperties['java.io.tmpdir'] + '/ipdr_archive'}}")
     private String archiveDirectoryPath;
 
     private final Random random = new Random();

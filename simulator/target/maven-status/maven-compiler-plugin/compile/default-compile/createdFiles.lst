@@ -1,8 +1,0 @@
-com\billing\simulator\model\GeneratedIpdrSession.class
-com\billing\simulator\model\RecognizedDeviceContext.class
-com\billing\simulator\db\SimulatorDatabaseService.class
-com\billing\simulator\config\SimulatorConfig.class
-com\billing\simulator\SimulatorApplication.class
-com\billing\simulator\generator\IpdrTrafficGenerator.class
-com\billing\simulator\model\CustomerContext.class
-com\billing\simulator\xml\IpdrXmlGenerator.class

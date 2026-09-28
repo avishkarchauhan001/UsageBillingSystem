@@ -9,7 +9,7 @@ A comprehensive, end-to-end broadband usage mediation, rating, and billing platf
 - **Backend**: Java 17, Spring Boot 4.1.x, Spring Data JPA / Hibernate, Spring Security, REST APIs
 - **Database**: MySQL 8.0+ (`billing` database)
 - **Frontend**: React 19, TypeScript, React Router 7, Bootstrap 5
-- **Standalone IPDR Simulator**: Standalone Java application (`simulator/`) with JDBC & XML generator
+- **Integrated IPDR Simulator & Rating Engine**: Built directly into Spring Boot (`/api/ipdr/simulate-and-download/{username}`) with DOCSIS 3.1 XML generation & download
 - **Build Tools**: Maven (`./mvnw.cmd`), npm
 
 ---
@@ -59,34 +59,30 @@ Get-Content "c:\NetworkCapstoneProject\database\seed.sql" | mysql -u root -p<YOU
    cd c:\NetworkCapstoneProject\backend
    .\mvnw.cmd spring-boot:run
    ```
-   Backend listens at `http://localhost:8081`.
+   Backend runs at `http://localhost:8081`.
 
 ### B. Frontend (React Application)
-1. Install dependencies & launch:
+1. Launch development server:
    ```powershell
    cd c:\NetworkCapstoneProject\frontend
    npm start
    ```
    Frontend starts at `http://localhost:3000`.
 
-### C. Standalone Java IPDR Simulator (User Story 16)
-The IPDR Simulator is a **pure standalone Java application** (located in `simulator/`), independent of Spring Boot and React:
-1. Build fat JAR:
-   ```powershell
-   cd c:\NetworkCapstoneProject\simulator
-   mvn clean package
-   ```
-2. Run simulation cycle:
-   - **Continuous mode** (runs at configurable interval, default 10 seconds):
-     ```powershell
-     java -jar target/ipdr-simulator.jar
-     ```
-   - **Single-shot mode** (generates one simulation cycle and exits):
-     ```powershell
-     java -jar target/ipdr-simulator.jar --once
-     ```
-   The simulator connects to MySQL, fetches active customers & their plans, selects an approved network device from `recognized_devices`, simulates session usage, and outputs canonical DOCSIS 3.1 IPDR XML files to `simulator/output/ipdr/`.
-   The backend's `IpdrDirectoryWatcherService` automatically polls this directory every 5 seconds, ingests and validates the records, rates customer usage, updates the customer bill, and moves the processed XML to `simulator/output/ipdr_archive/`.
+### C. Integrated Usage Simulation & Canonical XML Generation (SRS US16)
+The usage simulator is **fully integrated** into the backend REST service and frontend UI:
+- **1-Click Simulation in Dashboard**: Log in as a customer (e.g. `customer1`) and click **`⚡ Ingest Usage (Download XML)`**. The system instantly simulates network session traffic, mediates against active tariffs, updates the pending bill and remaining quota metrics, and automatically downloads the canonical DOCSIS 3.1 `ipdr_usage_<username>.xml` file.
+- **REST API Endpoint**:
+  ```http
+  GET /api/ipdr/simulate-and-download/{username}
+  POST /api/ipdr/simulate-and-download/{username}
+  POST /api/ipdr/simulate/{username}?count=3
+  ```
+- **Direct XML Ingestion**: If you have an external or custom XML document to test, send it via:
+  ```http
+  POST /api/ipdr/upload-xml
+  Content-Type: application/xml
+  ```
 
 ---
 
@@ -145,40 +141,39 @@ The IPDR Simulator is a **pure standalone Java application** (located in `simula
 
 ---
 
-## 6. Standalone IPDR Simulator (SRS US16) & Mediation Pipeline
+## 6. Integrated IPDR Simulation & Mediation Pipeline (SRS US16)
 
 ### Pipeline Architecture
 
 ```
 +-------------------------------------------------------------+
-|               STANDALONE IPDR SIMULATOR                     |
+|        INTEGRATED USAGE SIMULATION & XML GENERATION         |
+|   (Triggered via UI "⚡ Ingest Usage" or REST API)           |
 |                                                             |
-|   1. Query MySQL: Eligible Active Customers & Plans         |
-|   2. Select Recognized Gateway (from recognized_devices)   |
-|   3. Generate Random Session Traffic scaled to Allowance    |
-|   4. Generate Canonical DOCSIS 3.1 IPDR XML                 |
-|   5. Write to simulator/output/ipdr/ipdr_traffic_*.xml      |
+|   1. Fetches Customer Subscription & Active Plan Tariff     |
+|   2. Selects Approved Gateway from recognized_devices       |
+|   3. Simulates realistic upload/download session traffic    |
+|   4. Generates Canonical DOCSIS 3.1 IPDR XML                |
+|   5. Returns XML as direct browser attachment download      |
 +-------------------------------------------------------------+
                               |
                               v
 +-------------------------------------------------------------+
 |             BACKEND USAGE MEDIATION & RATING                |
 |                                                             |
-|   1. IpdrDirectoryWatcherService polls output/ipdr/         |
-|   2. XML Parser extracts IPDR records                       |
-|   3. Validation Engine verifies:                            |
+|   1. XML / Session Parsing extracts IPDR records            |
+|   2. Validation Engine verifies:                            |
 |        - Recognized Device Check (Hostname & IP in DB)      |
 |        - Service Identifier Maps to Active Customer         |
 |        - Service Direction is 1 (Upload) or 2 (Download)    |
 |        - IPv4 & MAC format validation                       |
 |        - Positive octets passed                             |
-|   4. Usage Aggregation: Inputs + Outputs converted to GB   |
-|   5. Tariff Rating Engine:                                  |
+|   3. Usage Aggregation: Inputs + Outputs converted to GB   |
+|   4. Tariff Rating Engine:                                  |
 |        - excess_mb = max(0, (total_gb - allowance_gb)*1024) |
 |        - excess_charge = excess_mb * rate_per_mb            |
 |        - total_bill = base_monthly_charge + excess_charge   |
-|   6. Persist/Update Bill in bills table                     |
-|   7. Archive XML file to simulator/output/ipdr_archive/     |
+|   5. Persist/Update Bill in bills table                     |
 +-------------------------------------------------------------+
                               |
                               v
