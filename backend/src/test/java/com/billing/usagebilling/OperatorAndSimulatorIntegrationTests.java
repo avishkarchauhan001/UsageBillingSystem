@@ -184,10 +184,10 @@ public class OperatorAndSimulatorIntegrationTests {
         assertEquals(1, result.getAcceptedRecords(), "Valid record must be accepted");
         assertEquals(0, result.getRejectedRecords());
 
-        // Verify customer1 pending bill is rated and updated
-        List<Bill> pending = billRepository.findByUserIdAndStatusOrderByGeneratedDateDesc(3L, "PENDING");
-        assertFalse(pending.isEmpty());
-        Bill bill = pending.get(0);
+        // Verify customer1 bill is rated and updated
+        List<Bill> bills = billRepository.findByUserIdOrderByGeneratedDateDesc(3L);
+        assertFalse(bills.isEmpty());
+        Bill bill = bills.get(0);
         assertTrue(bill.getTotalUsageBytes() > 0);
         assertTrue(bill.getUsageInGb() > 0);
     }

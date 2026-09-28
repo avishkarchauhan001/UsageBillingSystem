@@ -245,6 +245,17 @@ public class CustomerService {
         bill.setRemark("Paid via " + paymentMode + " (Txn: " + txnRef + ")");
         billRepository.save(bill);
 
+        // Clean up any duplicate pending bills for the exact same billing cycle
+        List<Bill> duplicatePending = billRepository.findByUserIdAndStatusOrderByGeneratedDateDesc(user.getId(), "PENDING")
+                .stream()
+                .filter(b -> !b.getId().equals(bill.getId()) 
+                        && b.getBillingStartDate() != null && b.getBillingStartDate().equals(bill.getBillingStartDate())
+                        && b.getBillingEndDate() != null && b.getBillingEndDate().equals(bill.getBillingEndDate()))
+                .collect(Collectors.toList());
+        if (!duplicatePending.isEmpty()) {
+            billRepository.deleteAll(duplicatePending);
+        }
+
         PaymentResponse response = new PaymentResponse();
         response.setPaymentId(savedPayment.getId());
         response.setBillId(bill.getId());

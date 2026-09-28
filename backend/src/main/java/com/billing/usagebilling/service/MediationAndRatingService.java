@@ -12,9 +12,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -498,8 +500,35 @@ public class MediationAndRatingService {
         BigDecimal baseCharge = plan.getMonthlyChargeUsd().setScale(2, RoundingMode.HALF_UP);
         BigDecimal totalAmount = baseCharge.add(excessCharge).setScale(2, RoundingMode.HALF_UP);
 
-        Bill bill = billRepository.findByUserIdAndStatusOrderByGeneratedDateDesc(user.getId(), "PENDING")
-                .stream().findFirst().orElse(null);
+        // Check if a bill already exists for this user and this billing cycle (periodStart to periodEnd)
+        List<Bill> userBills = billRepository.findByUserIdOrderByGeneratedDateDesc(user.getId());
+        Bill currentCycleBill = userBills.stream()
+                .filter(b -> periodStart.equals(b.getBillingStartDate()) && periodEnd.equals(b.getBillingEndDate()))
+                .findFirst()
+                .orElse(null);
+
+        // If the bill for this cycle has ALREADY BEEN PAID:
+        // Do NOT generate a new pending bill or overwrite its paid status!
+        if (currentCycleBill != null && "PAID".equalsIgnoreCase(currentCycleBill.getStatus())) {
+            // Clean up any stale duplicate PENDING bills for this exact cycle if any exist
+            List<Bill> stalePending = userBills.stream()
+                    .filter(b -> periodStart.equals(b.getBillingStartDate()) 
+                            && periodEnd.equals(b.getBillingEndDate()) 
+                            && "PENDING".equalsIgnoreCase(b.getStatus()))
+                    .collect(Collectors.toList());
+            if (!stalePending.isEmpty()) {
+                billRepository.deleteAll(stalePending);
+            }
+            return currentCycleBill;
+        }
+
+        Bill bill = currentCycleBill;
+        if (bill == null) {
+            bill = userBills.stream()
+                    .filter(b -> "PENDING".equalsIgnoreCase(b.getStatus()))
+                    .findFirst()
+                    .orElse(null);
+        }
 
         if (bill == null) {
             bill = new Bill();

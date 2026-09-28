@@ -1,5 +1,6 @@
 package com.billing.usagebilling;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -21,7 +22,9 @@ import com.billing.usagebilling.dto.PaymentResponse;
 import com.billing.usagebilling.dto.PlanChangeResponse;
 import com.billing.usagebilling.dto.PlanDto;
 import com.billing.usagebilling.dto.UsageReportResponse;
+import com.billing.usagebilling.entity.Bill;
 import com.billing.usagebilling.entity.User;
+import com.billing.usagebilling.repository.BillRepository;
 import com.billing.usagebilling.repository.UserRepository;
 import com.billing.usagebilling.service.CustomerService;
 import com.billing.usagebilling.service.MediationAndRatingService;
@@ -45,6 +48,9 @@ public class CustomerModuleIntegrationTests {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private BillRepository billRepository;
 
     // 1. AUTHENTICATION & DEACTIVATION TESTS
     @Test
@@ -124,25 +130,35 @@ public class CustomerModuleIntegrationTests {
         ratingService.updateRatingForCustomer(user);
 
         List<BillDto> pendingBefore = customerService.getPendingBills("customer1");
-        if (!pendingBefore.isEmpty()) {
-            BillDto bill = pendingBefore.get(0);
-
-            // Customer2 cannot pay Customer1's bill
-            assertThrows(RuntimeException.class, () -> {
-                customerService.payBill("customer2", bill.getId(), "UPI");
-            });
-
-            // Customer1 pays their bill
-            PaymentResponse paymentResponse = customerService.payBill("customer1", bill.getId(), "Net banking");
-            assertNotNull(paymentResponse);
-            assertEquals("SUCCESS", paymentResponse.getPaymentStatus());
-            assertEquals("Net banking", paymentResponse.getPaymentMode());
-
-            // Re-paying already paid bill fails
-            assertThrows(RuntimeException.class, () -> {
-                customerService.payBill("customer1", bill.getId(), "UPI");
-            });
+        if (pendingBefore.isEmpty()) {
+            List<Bill> bills = billRepository.findByUserIdOrderByGeneratedDateDesc(user.getId());
+            if (!bills.isEmpty()) {
+                Bill b = bills.get(0);
+                b.setStatus("PENDING");
+                b.setPaidDate(null);
+                billRepository.save(b);
+            }
+            pendingBefore = customerService.getPendingBills("customer1");
         }
+        assertFalse(pendingBefore.isEmpty());
+
+        BillDto bill = pendingBefore.get(0);
+
+        // Customer2 cannot pay Customer1's bill
+        assertThrows(RuntimeException.class, () -> {
+            customerService.payBill("customer2", bill.getId(), "UPI");
+        });
+
+        // Customer1 pays their bill
+        PaymentResponse paymentResponse = customerService.payBill("customer1", bill.getId(), "Net banking");
+        assertNotNull(paymentResponse);
+        assertEquals("SUCCESS", paymentResponse.getPaymentStatus());
+        assertEquals("Net banking", paymentResponse.getPaymentMode());
+
+        // Re-paying already paid bill fails
+        assertThrows(RuntimeException.class, () -> {
+            customerService.payBill("customer1", bill.getId(), "UPI");
+        });
     }
 
     // 5. CHANGE PLAN (SRS US19: Delayed Activation After Current Plan Expiry)
