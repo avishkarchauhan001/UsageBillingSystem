@@ -6,8 +6,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -335,8 +337,10 @@ public class CustomerService {
     public UsageReportResponse getUserReport(String username, LocalDate fromDate, LocalDate toDate) {
         User user = getCustomerUser(username);
 
-        if (fromDate == null || toDate == null) {
+        if (toDate == null) {
             toDate = LocalDate.now();
+        }
+        if (fromDate == null) {
             fromDate = toDate.minusDays(14);
         }
 
@@ -347,8 +351,25 @@ public class CustomerService {
         LocalDateTime startDt = fromDate.atStartOfDay();
         LocalDateTime endDt = toDate.atTime(23, 59, 59);
 
-        List<IpdrRecord> records = ipdrRepository
+        List<IpdrRecord> userRecords = ipdrRepository
                 .findByUserIdAndSessionStartBetweenOrderBySessionStartAsc(user.getId(), startDt, endDt);
+        List<IpdrRecord> sidRecords = ipdrRepository
+                .findByServiceIdentifierOrderBySessionStartDesc(user.getUsername());
+
+        Set<Long> seenIds = new HashSet<>();
+        List<IpdrRecord> records = new ArrayList<>();
+        for (IpdrRecord r : userRecords) {
+            if (r.getId() != null) seenIds.add(r.getId());
+            records.add(r);
+        }
+        for (IpdrRecord r : sidRecords) {
+            if (r.getId() != null && !seenIds.contains(r.getId())) {
+                if (r.getSessionStart() != null && !r.getSessionStart().isBefore(startDt) && !r.getSessionStart().isAfter(endDt)) {
+                    seenIds.add(r.getId());
+                    records.add(r);
+                }
+            }
+        }
 
         // Group by Date
         Map<LocalDate, long[]> dailyOctets = new HashMap<>(); // [0]=upload, [1]=download

@@ -179,10 +179,19 @@ export const CustomerDashboardPage: React.FC<Props> = ({ username, onLogout }) =
   }, [selectedNewPlanId]);
 
   const fetchReport = useCallback(async () => {
+    if (fromDate && toDate && fromDate > toDate) {
+      setReportError('FROM DATE cannot be after TO DATE');
+      return;
+    }
     setReportLoading(true);
     setReportError('');
     try {
-      const res = await fetch(`http://localhost:8081/api/customer/report?username=${encodeURIComponent(username)}&fromDate=${fromDate}&toDate=${toDate}`);
+      const queryParams = new URLSearchParams();
+      queryParams.append('username', username);
+      if (fromDate) queryParams.append('fromDate', fromDate);
+      if (toDate) queryParams.append('toDate', toDate);
+
+      const res = await fetch(`http://localhost:8081/api/customer/report?${queryParams.toString()}`);
       const data = await res.json();
       if (!res.ok) {
         setReportError(data.message || 'Failed to fetch report');
@@ -264,20 +273,34 @@ export const CustomerDashboardPage: React.FC<Props> = ({ username, onLogout }) =
     }
   };
 
-  // Simulate IPDR usage traffic for demonstration
+  // Simulate IPDR usage traffic & trigger XML download (SRS US16)
   const handleSimulateUsage = async () => {
     try {
-      const res = await fetch(`http://localhost:8081/api/ipdr/simulate/${encodeURIComponent(username)}?count=2`, {
+      setSimMsg('Generating IPDR session & preparing XML download...');
+      const res = await fetch(`http://localhost:8081/api/ipdr/simulate-and-download/${encodeURIComponent(username)}`, {
         method: 'POST'
       });
-      const data = await res.json();
-      setSimMsg(data.message || 'Simulated usage successfully!');
+      if (!res.ok) {
+        throw new Error('Failed to generate IPDR session');
+      }
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `ipdr_usage_${username}.xml`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      document.body.removeChild(a);
+
+      setSimMsg(`⚡ IPDR session ingested & ipdr_usage_${username}.xml downloaded successfully!`);
       fetchHomeData();
       fetchPendingBills();
       fetchBills();
-      setTimeout(() => setSimMsg(''), 4000);
+      setTimeout(() => setSimMsg(''), 5000);
     } catch (err) {
-      setSimMsg('Failed to trigger simulation');
+      setSimMsg('Failed to trigger simulation & XML download');
+      setTimeout(() => setSimMsg(''), 4000);
     }
   };
 
@@ -411,11 +434,11 @@ export const CustomerDashboardPage: React.FC<Props> = ({ username, onLogout }) =
 
                   <div className="d-flex gap-2">
                     <button
-                      className="btn btn-outline-secondary btn-sm"
+                      className="btn btn-outline-secondary btn-sm fw-semibold"
                       onClick={handleSimulateUsage}
-                      title="Trigger IPDR simulator session"
+                      title="Trigger IPDR simulator session and download canonical XML file"
                     >
-                      ⚡ Ingest Usage (Simulate)
+                      ⚡ Ingest Usage (Download XML)
                     </button>
 
                     {homeData.pendingBillsCount > 0 ? (
@@ -899,33 +922,62 @@ export const CustomerDashboardPage: React.FC<Props> = ({ username, onLogout }) =
                     DAILY USAGE BREAKDOWN (MB)
                   </h6>
                   
-                  {/* CSS / SVG Bar Chart */}
+                  {/* Multi-Series Grouped Bar Chart (SRS US20 - Series 1 Upload, Series 2 Download, Series 3 Total) */}
                   <div
                     className="d-flex align-items-end justify-content-between px-2 pt-3 border-bottom"
-                    style={{ height: '220px', gap: '8px', overflowX: 'auto' }}
+                    style={{ height: '240px', gap: '8px', overflowX: 'auto' }}
                   >
                     {reportData.dailyUsage.map((item) => {
-                      const maxMb = Math.max(...reportData.dailyUsage.map(d => d.totalMb), 100);
-                      const heightPercent = Math.min(100, Math.max(6, Math.round((item.totalMb / maxMb) * 100)));
+                      const allMax = Math.max(...reportData.dailyUsage.map(d => Math.max(d.totalMb, d.uploadMb, d.downloadMb)), 50);
+                      const upPercent = Math.min(100, Math.max(4, Math.round((item.uploadMb / allMax) * 100)));
+                      const downPercent = Math.min(100, Math.max(4, Math.round((item.downloadMb / allMax) * 100)));
+                      const totalPercent = Math.min(100, Math.max(6, Math.round((item.totalMb / allMax) * 100)));
+
                       return (
                         <div
                           key={item.date}
                           className="d-flex flex-column align-items-center flex-fill"
-                          style={{ minWidth: '38px' }}
+                          style={{ minWidth: '55px' }}
                         >
-                          <small className="fw-bold text-primary mb-1" style={{ fontSize: '10px' }}>
-                            {item.totalMb > 0 ? `${item.totalMb.toFixed(0)}M` : ''}
+                          <small className="fw-bold text-muted mb-1" style={{ fontSize: '9px' }}>
+                            {item.totalMb > 0 ? `${item.totalMb.toFixed(0)}M` : '0M'}
                           </small>
-                          <div
-                            className="w-100 rounded-top"
-                            style={{
-                              height: `${heightPercent}%`,
-                              backgroundColor: item.totalMb > 0 ? '#0288d1' : '#e0e0e0',
-                              transition: 'height 0.4s ease'
-                            }}
-                            title={`${item.date}: ${item.totalMb} MB (Up: ${item.uploadMb} MB, Down: ${item.downloadMb} MB)`}
-                          ></div>
-                          <span className="text-muted mt-2" style={{ fontSize: '9px', whiteSpace: 'nowrap' }}>
+                          <div className="d-flex align-items-end justify-content-center gap-1 w-100" style={{ height: '170px' }}>
+                            {/* Series 1: Upload */}
+                            <div
+                              style={{
+                                width: '11px',
+                                height: `${upPercent}%`,
+                                backgroundColor: '#00acc1',
+                                borderRadius: '3px 3px 0 0',
+                                transition: 'height 0.4s ease'
+                              }}
+                              title={`${item.date} - Series 1 (Upload): ${item.uploadMb} MB`}
+                            />
+                            {/* Series 2: Download */}
+                            <div
+                              style={{
+                                width: '11px',
+                                height: `${downPercent}%`,
+                                backgroundColor: '#43a047',
+                                borderRadius: '3px 3px 0 0',
+                                transition: 'height 0.4s ease'
+                              }}
+                              title={`${item.date} - Series 2 (Download): ${item.downloadMb} MB`}
+                            />
+                            {/* Series 3: Total */}
+                            <div
+                              style={{
+                                width: '13px',
+                                height: `${totalPercent}%`,
+                                backgroundColor: '#1976d2',
+                                borderRadius: '3px 3px 0 0',
+                                transition: 'height 0.4s ease'
+                              }}
+                              title={`${item.date} - Series 3 (Total): ${item.totalMb} MB`}
+                            />
+                          </div>
+                          <span className="text-muted mt-2 fw-semibold" style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>
                             {item.date.substring(5)}
                           </span>
                         </div>
@@ -933,7 +985,9 @@ export const CustomerDashboardPage: React.FC<Props> = ({ username, onLogout }) =
                     })}
                   </div>
                   <div className="d-flex justify-content-center gap-4 mt-3 small text-muted">
-                    <span><span className="badge bg-primary me-1">&nbsp;</span> Total MB Consumed</span>
+                    <span className="d-flex align-items-center"><span className="badge me-1" style={{ backgroundColor: '#00acc1' }}>&nbsp;</span> Series 1: Upload (MB)</span>
+                    <span className="d-flex align-items-center"><span className="badge me-1" style={{ backgroundColor: '#43a047' }}>&nbsp;</span> Series 2: Download (MB)</span>
+                    <span className="d-flex align-items-center"><span className="badge me-1" style={{ backgroundColor: '#1976d2' }}>&nbsp;</span> Series 3: Total (MB)</span>
                   </div>
                 </div>
 

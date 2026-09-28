@@ -28,9 +28,19 @@ import com.billing.usagebilling.service.UserService;
 public class AdminController {
 
     private final UserService userService;
+    private final com.billing.usagebilling.service.PlanService planService;
 
-    public AdminController(UserService userService) {
+    public AdminController(UserService userService, com.billing.usagebilling.service.PlanService planService) {
         this.userService = userService;
+        this.planService = planService;
+    }
+
+    /**
+     * SRS US07: Admin Plan Report / Sales pictorial analysis
+     */
+    @GetMapping("/report")
+    public ResponseEntity<java.util.List<com.billing.usagebilling.dto.PlanReportDto>> getSalesReport() {
+        return ResponseEntity.ok(planService.getPlanSalesReport());
     }
 
     @GetMapping("/users")

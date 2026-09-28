@@ -16,4 +16,6 @@ public interface CustomerPlanRepository extends JpaRepository<CustomerPlan, Long
     List<CustomerPlan> findByUserIdAndStatus(Long userId, String status);
     List<CustomerPlan> findByStatusAndExpiryDateBefore(String status, LocalDate date);
     List<CustomerPlan> findByStatusAndStartDateLessThanEqual(String status, LocalDate date);
+    long countByPlanIdAndStatus(Long planId, String status);
+    List<CustomerPlan> findByPlanIdAndStatus(Long planId, String status);
 }

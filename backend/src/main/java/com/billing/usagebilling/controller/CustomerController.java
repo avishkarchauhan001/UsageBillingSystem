@@ -86,7 +86,7 @@ public class CustomerController {
     public ResponseEntity<PaymentResponse> payBill(
             @PathVariable Long billId,
             @RequestParam String username,
-            @RequestBody(required = false) PaymentRequest request) {
+            @RequestBody(required = false) com.billing.usagebilling.dto.PaymentRequest request) {
         String paymentMode = (request != null && request.getPaymentMode() != null) 
                 ? request.getPaymentMode() 
                 : "Online";
@@ -107,7 +107,7 @@ public class CustomerController {
     @PostMapping("/change-plan")
     public ResponseEntity<PlanChangeResponse> changePlan(
             @RequestParam String username,
-            @RequestBody PlanChangeRequest request) {
+            @RequestBody com.billing.usagebilling.dto.PlanChangeRequest request) {
         return ResponseEntity.ok(customerService.changePlan(username, request.getNewPlanId()));
     }
 
@@ -117,9 +117,21 @@ public class CustomerController {
     @GetMapping("/report")
     public ResponseEntity<UsageReportResponse> getUserReport(
             @RequestParam String username,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
-        return ResponseEntity.ok(customerService.getUserReport(username, fromDate, toDate));
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate) {
+        LocalDate from = null;
+        LocalDate to = null;
+        try {
+            if (fromDate != null && !fromDate.isBlank()) {
+                from = LocalDate.parse(fromDate.trim());
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (toDate != null && !toDate.isBlank()) {
+                to = LocalDate.parse(toDate.trim());
+            }
+        } catch (Exception ignored) {}
+        return ResponseEntity.ok(customerService.getUserReport(username, from, to));
     }
 
     @ExceptionHandler(RuntimeException.class)

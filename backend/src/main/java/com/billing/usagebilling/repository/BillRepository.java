@@ -19,4 +19,5 @@ public interface BillRepository extends JpaRepository<Bill, Long> {
     List<Bill> findByUserIdAndBillNumberContainingIgnoreCase(Long userId, String query);
     List<Bill> findByUserIdAndBillingStartDateBetween(Long userId, LocalDate fromDate, LocalDate toDate);
     long countByUserIdAndStatus(Long userId, String status);
+    List<Bill> findByPlanId(Long planId);
 }
